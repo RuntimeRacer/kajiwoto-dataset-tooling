@@ -25,7 +25,7 @@ import (
 // downloadCmd represents the download command
 var downloadCmd = &cobra.Command{
 	Use:   "download",
-	Short: "A brief description of your command",
+	Short: "Downloads a dataset from a specified source and stores it in a specified target file.",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 

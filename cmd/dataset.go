@@ -17,23 +17,21 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
+
+// Flags
+var source, target string
 
 // datasetCmd represents the dataset command
 var datasetCmd = &cobra.Command{
 	Use:   "dataset",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Interact with kajiwoto's dataset API or local dataset files",
+	Long: `dataset is used to interact with kajiwoto's dataset API or local files containing dataset content. 
+Only works with a valid session, otherwise it will fail.
+Offers various subcommands for different kinds of dataset interaction.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("dataset called")
+		cmd.Help()
 	},
 }
 
@@ -45,6 +43,10 @@ func init() {
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	// datasetCmd.PersistentFlags().String("foo", "", "A help for foo")
+	datasetCmd.PersistentFlags().StringVarP(&source, "source", "s", "", "source file or URL")
+	datasetCmd.PersistentFlags().StringVarP(&target, "target", "t", "", "target file or URL")
+	datasetCmd.MarkPersistentFlagRequired("source")
+	datasetCmd.MarkPersistentFlagRequired("target")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:

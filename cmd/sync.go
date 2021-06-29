@@ -25,7 +25,7 @@ import (
 // syncCmd represents the sync command
 var syncCmd = &cobra.Command{
 	Use:   "sync",
-	Short: "A brief description of your command",
+	Short: "Syncs (missing) data between two files or datasets",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 
