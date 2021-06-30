@@ -23,6 +23,8 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/runtimeracer/go-graphql-client"
+	"github.com/runtimeracer/kajitool/constants"
 	"github.com/spf13/cobra"
 	"os"
 
@@ -31,6 +33,7 @@ import (
 )
 
 var cfgFile string
+var sessionKey, endpoint string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -51,7 +54,7 @@ to quickly create a Cobra application.`,
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		//fmt.Println(err)
 		os.Exit(1)
 	}
 }
@@ -59,15 +62,15 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
+	// Root CMD Persistend Flags
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.kajitool.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&endpoint, "endpoint", "e", constants.DefaultEndpoint, "Specify target Endpoint for API Requests")
+	rootCmd.PersistentFlags().StringVar(&sessionKey, "sessionkey", "", "manually specify a session key if required")
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// Lookup from Config
+	viper.BindPFlag("endpoint", rootCmd.PersistentFlags().Lookup("endpoint"))
+	viper.BindPFlag("sessionkey", rootCmd.PersistentFlags().Lookup("sessionkey"))
+
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -85,6 +88,7 @@ func initConfig() {
 
 		// Search config in home directory with name ".kajitool" (without extension).
 		viper.AddConfigPath(home)
+		viper.SetConfigType("yaml")
 		viper.SetConfigName(".kajitool")
 	}
 
@@ -94,4 +98,8 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
+}
+
+func getGraphEndpointClient() *graphql.Client {
+	return graphql.NewClient(viper.GetString("endpoint"), nil)
 }

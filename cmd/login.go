@@ -17,10 +17,64 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"fmt"
-
+	"github.com/runtimeracer/go-graphql-client"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
+
+// GraphQL for requests
+type kajiwotoLoginMutation struct {
+	Login struct {
+		AuthToken graphql.String
+		User      struct {
+			ID          graphql.String
+			Activated   graphql.Boolean
+			Moderator   graphql.Boolean
+			Username    graphql.String
+			DisplayName graphql.String
+			Plus        struct {
+				ExpireAt  uint64
+				Cancelled graphql.Boolean
+				Icon      graphql.Int
+				Coins     graphql.Int
+				Type      graphql.String
+			}
+			Creator struct {
+				AllowSubscriptions graphql.Boolean
+				DatasetTags        []graphql.String
+			}
+			Profile struct {
+				FirstName   graphql.String
+				LastName    graphql.String
+				Description graphql.String
+				Gender      graphql.String
+				Birthday    graphql.String
+				PhotoUri    graphql.String
+			}
+			Email struct {
+				Address  graphql.String
+				Verified graphql.Boolean
+			}
+		}
+		Settings struct {
+			PersonalRoomOrder []graphql.String
+			FavoriteRoomIds   []graphql.String
+			FavoriteEmojis    []graphql.String
+		}
+	} `graphql:"login (usernameOrEmail: $usernameOrEmail, password: $password, deviceType: WEB)"`
+	Welcome struct {
+		WebVersion   graphql.String
+		Announcement struct {
+			Date      uint64
+			Title     graphql.String
+			Emojis    graphql.String
+			Content   []graphql.String
+			TextColor graphql.String
+		}
+	}
+}
 
 // Flags
 var username, password string
@@ -34,9 +88,39 @@ var loginCmd = &cobra.Command{
 1. Login and verify correctness of credentials.
 2. Storing your credentials in your kajitool config file ($HOMEDIR/.kajotool.yaml).
 3. Storing your session ID in your kajitool config file for reuse when executing commands against the Kajiwoto API.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Check for flags properly set
+		if username == "" || password == "" {
+			return fmt.Errorf("invalid login credentials")
+		}
+
+		// Get GraphQL Client and execute login
+		client := getGraphEndpointClient()
+
+		vars := map[string]interface{}{
+			"usernameOrEmail": graphql.String(username),
+			"password":        graphql.String(password),
+		}
+
+		loginResult := kajiwotoLoginMutation{}
+		if errLogin := client.Mutate(context.Background(), &loginResult, vars); errLogin != nil {
+			fmt.Println(fmt.Sprintf("Unable to login, response: %v", errLogin))
+			return nil
+		}
+
+		if loginResult.Login.AuthToken == "" {
+			fmt.Println("Invalid response from server: Auth token empty.")
+			return nil
+		}
+
+		// Seems like Login worked
+		userInfo := &loginResult.Login.User
+		fmt.Println(fmt.Sprintf("Login successful! Hello %v!", userInfo.DisplayName))
+
+		// Update Auth token in config file
 		// TODO
-		fmt.Println("login called")
+
+		return nil
 	},
 }
 
@@ -46,4 +130,9 @@ func init() {
 	// Flags for Login
 	loginCmd.PersistentFlags().StringVarP(&username, "username", "u", "", "username, required for first login or if switching accounts.")
 	loginCmd.PersistentFlags().StringVarP(&password, "password", "p", "", "password, required for first login or if switching accounts.")
+
+	// Lookup from Config
+	viper.BindPFlag("username", loginCmd.PersistentFlags().Lookup("username"))
+	viper.BindPFlag("password", loginCmd.PersistentFlags().Lookup("password"))
+
 }
