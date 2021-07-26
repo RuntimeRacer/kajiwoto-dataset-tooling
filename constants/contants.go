@@ -21,4 +21,5 @@ const (
 	KajiToolVersion = "0.1.0"
 
 	DefaultEndpoint = "https://server.chiefhappiness.co/graphql"
+	EnvPrefix       = "KAJI"
 )

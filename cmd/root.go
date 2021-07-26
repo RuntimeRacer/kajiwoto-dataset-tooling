@@ -23,10 +23,11 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/runtimeracer/go-graphql-client"
 	"github.com/runtimeracer/kajitool/constants"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"os"
+	"strings"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
@@ -67,10 +68,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&endpoint, "endpoint", "e", constants.DefaultEndpoint, "Specify target Endpoint for API Requests")
 	rootCmd.PersistentFlags().StringVar(&sessionKey, "sessionkey", "", "manually specify a session key if required")
 
-	// Lookup from Config
-	viper.BindPFlag("endpoint", rootCmd.PersistentFlags().Lookup("endpoint"))
-	viper.BindPFlag("sessionkey", rootCmd.PersistentFlags().Lookup("sessionkey"))
-
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -90,16 +87,45 @@ func initConfig() {
 		viper.AddConfigPath(home)
 		viper.SetConfigType("yaml")
 		viper.SetConfigName(".kajitool")
-	}
 
-	viper.AutomaticEnv() // read in environment variables that match
+		// Create config file if not exists
+		if err = viper.SafeWriteConfig(); err != nil {
+			fmt.Println(err)
+		}
+	}
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	} else {
+		fmt.Println(err)
 	}
+
+	viper.SetEnvPrefix(constants.EnvPrefix)
+	viper.AutomaticEnv() // read in environment variables that match
+
+	bindFlags(rootCmd)
+
 }
 
-func getGraphEndpointClient() *graphql.Client {
-	return graphql.NewClient(viper.GetString("endpoint"), nil)
+// Bind each cobra flag to its associated viper configuration (config file and environment variable)
+func bindFlags(cmd *cobra.Command) {
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		// Environment variables can't have dashes in them, so bind them to their equivalent
+		// keys with underscores, e.g. --favorite-color to STING_FAVORITE_COLOR
+		if strings.Contains(f.Name, "-") {
+			envVarSuffix := strings.ToUpper(strings.ReplaceAll(f.Name, "-", "_"))
+			if err := viper.BindEnv(f.Name, fmt.Sprintf("%s_%s", constants.EnvPrefix, envVarSuffix)); err != nil {
+				fmt.Println(err)
+			}
+		}
+
+		// Apply the viper config value to the flag when the flag is not set and viper has a value
+		if !f.Changed && viper.IsSet(f.Name) {
+			val := viper.Get(f.Name)
+			if err := cmd.Flags().Set(f.Name, fmt.Sprintf("%v", val)); err != nil {
+				fmt.Println(err)
+			}
+		}
+	})
 }
