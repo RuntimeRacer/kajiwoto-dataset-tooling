@@ -44,12 +44,14 @@ var loginCmd = &cobra.Command{
 		loginResult := query.LoginResult{}
 		var errLogin error
 		if sessionKey != "" {
+			fmt.Println(fmt.Sprintf("Performing login via Session key: %v", sessionKey))
 			loginResult, errLogin = client.DoLoginAuthToken(sessionKey)
 			if errLogin != nil {
 				fmt.Println(fmt.Sprintf("Unable to login via auth token, trying with username / password. error: %v", errLogin))
 				loginResult, errLogin = client.DoLoginUserPW(username, password)
 			}
 		} else {
+			fmt.Println("Performing login via Username / Password combo")
 			loginResult, errLogin = client.DoLoginUserPW(username, password)
 		}
 

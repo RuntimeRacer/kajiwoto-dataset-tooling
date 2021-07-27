@@ -42,8 +42,11 @@ func GetKajiwotoClient(endpoint string) *kajiwotoClient {
 	// Init HTTP Client
 	transportClient := &http.Client{
 		Transport: &headerTransport{
-			base:    http.DefaultTransport,
-			headers: map[string]string{},
+			base: http.DefaultTransport,
+			headers: map[string]string{
+				// Default Headers
+				"Content-Type": "application/json",
+			},
 		},
 	}
 
