@@ -22,4 +22,5 @@ const (
 
 	DefaultEndpoint = "https://server.chiefhappiness.co/graphql"
 	EnvPrefix       = "KAJI"
+	FetchLimit      = 100
 )

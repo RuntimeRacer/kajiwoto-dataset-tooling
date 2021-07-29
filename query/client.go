@@ -15,7 +15,7 @@ type headerTransport struct {
 }
 
 func (h *headerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req2 := CloneRequest(req)
+	req2 := cloneRequest(req)
 	for key, val := range h.headers {
 		req2.Header.Set(key, val)
 	}
@@ -122,25 +122,98 @@ func (c *kajiwotoClient) DoLoginAuthToken(authToken string) (result LoginResult,
 	return result, nil
 }
 
+func (c *kajiwotoClient) GetAITrainerGroup(aiTrainerGroupID, authToken string) (result AITrainerGroup, err error) {
+	// Sanity check
+	if authToken == "" {
+		return result, fmt.Errorf("invalid auth token")
+	}
+	if aiTrainerGroupID == "" {
+		return result, fmt.Errorf("invalid trainer group ID")
+	}
+
+	vars := map[string]interface{}{
+		"aiTrainerGroupId": graphql.String(aiTrainerGroupID),
+	}
+
+	// Add Auth-Token header
+	headers := map[string]string{
+		"auth_token": authToken,
+	}
+	c.AddHeaders(headers)
+
+	// Execute Query
+	aiTrainerGroupResult := kajiwotoDatasetAITrainerGroupQuery{}
+	if errLogin := c.performGraphQuery(vars, &aiTrainerGroupResult); errLogin != nil {
+		return result, fmt.Errorf("unable to fetch AI trainer group, response: %q", errLogin)
+	}
+
+	// Build generic Result object
+	result = aiTrainerGroupResult.AITrainerGroup
+	return result, nil
+}
+
+func (c *kajiwotoClient) GetAITrainedList(aiTrainerGroupID, searchQuery, authToken string, limit, page int) (result []AITrained, err error) {
+	// Sanity check
+	if authToken == "" {
+		return result, fmt.Errorf("invalid auth token")
+	}
+	if aiTrainerGroupID == "" {
+		return result, fmt.Errorf("invalid trainer group ID")
+	}
+	if limit < 1 || limit > 100 {
+		return result, fmt.Errorf("limit exceeds allowed range")
+	}
+	if page < 0 {
+		return result, fmt.Errorf("page cannot be negative")
+	}
+
+	vars := map[string]interface{}{
+		"aiTrainerGroupId": graphql.String(aiTrainerGroupID),
+		"limit":            graphql.Int(limit),
+		"page":             graphql.Int(page),
+		"searchQuery":      graphql.String(searchQuery),
+	}
+
+	// Add Auth-Token header
+	headers := map[string]string{
+		"auth_token": authToken,
+	}
+	c.AddHeaders(headers)
+
+	// Execute Query
+	aiTrainedListResult := kajiwotoDatasetAITrainedListQuery{}
+	if errLogin := c.performGraphQuery(vars, &aiTrainedListResult); errLogin != nil {
+		return result, fmt.Errorf("unable to fetch AI trainer group, response: %q", errLogin)
+	}
+
+	// Build generic Result object
+	result = aiTrainedListResult.AITrainedList
+	return result, nil
+}
+
 func (c *kajiwotoClient) performGraphMutation(vars map[string]interface{}, mutation interface{}) error {
 	return c.client.Mutate(context.Background(), mutation, vars)
 }
 
-// CloneRequest creates a shallow copy of the request along with a deep copy of the Headers.
-func CloneRequest(req *http.Request) *http.Request {
+func (c *kajiwotoClient) performGraphQuery(vars map[string]interface{}, query interface{}) error {
+	return c.client.Query(context.Background(), query, vars)
+}
+
+// cloneRequest creates a shallow copy of the request along with a deep copy of the Headers.
+func cloneRequest(req *http.Request) *http.Request {
 	r := new(http.Request)
 
 	// shallow clone
 	*r = *req
 
 	// deep copy headers
-	r.Header = CloneHeader(req.Header)
+	r.Header = cloneHeader(req.Header)
 
 	return r
 }
 
-// CloneHeader creates a deep copy of an http.Header.
-func CloneHeader(in http.Header) http.Header {
+// cloneHeader creates a deep copy of an http.Header.
+func cloneHeader(in http.Header) http.Header {
 	out := make(http.Header, len(in))
 	for key, values := range in {
 		newValues := make([]string, len(values))

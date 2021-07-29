@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"github.com/runtimeracer/kajitool/query"
 	"github.com/spf13/cobra"
@@ -34,7 +35,7 @@ var loginCmd = &cobra.Command{
 
 1. Login and verify correctness of credentials.
 2. Storing your credentials in your kajitool config file ($HOMEDIR/.kajotool.yaml).
-3. Storing your session ID in your kajitool config file for reuse when executing commands against the Kajiwoto API.`,
+3. Storing your session ID in your kajitool config file for reuse when executing further commands against the Kajiwoto API.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		// Init Client
@@ -57,14 +58,12 @@ var loginCmd = &cobra.Command{
 
 		// Check for error
 		if errLogin != nil {
-			fmt.Println(fmt.Sprintf("Unable to login, response: %q", errLogin))
-			return nil
+			return fmt.Errorf("unable to login, response: %q", errLogin)
 		}
 
 		// Validate response
 		if loginResult.Login.AuthToken == "" {
-			fmt.Println("Invalid response from server: Auth token empty.")
-			return nil
+			return errors.New("invalid response from server: Auth token empty")
 		}
 
 		// Seems like Login worked
@@ -76,7 +75,7 @@ var loginCmd = &cobra.Command{
 		viper.Set("sessionkey", loginResult.Login.AuthToken)
 		fmt.Println(fmt.Sprintf("Session key: %v", sessionKey))
 		if err := viper.WriteConfig(); err != nil {
-			fmt.Println(err.Error())
+			return err
 		}
 
 		return nil

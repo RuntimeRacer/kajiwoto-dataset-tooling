@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 )
 
@@ -38,17 +39,14 @@ Offers various subcommands for different kinds of dataset interaction.`,
 func init() {
 	rootCmd.AddCommand(datasetCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// datasetCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// Flags fir dataset commands
 	datasetCmd.PersistentFlags().StringVarP(&source, "source", "s", "", "source file or URL")
 	datasetCmd.PersistentFlags().StringVarP(&target, "target", "t", "", "target file or URL")
-	datasetCmd.MarkPersistentFlagRequired("source")
-	datasetCmd.MarkPersistentFlagRequired("target")
+	if err := datasetCmd.MarkPersistentFlagRequired("source"); err != nil {
+		fmt.Println(err.Error())
+	}
+	if err := datasetCmd.MarkPersistentFlagRequired("target"); err != nil {
+		fmt.Println(err.Error())
+	}
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// datasetCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
