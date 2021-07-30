@@ -100,58 +100,10 @@ type Kudos struct {
 }
 
 type AITrained struct {
-	ID          graphql.String
-	UserMessage graphql.String
-	Message     graphql.String
-	/*	ASM Cheat sheet
-
-		... No idea what "ASM" stands for in this context. But its holding the emotional values for the Kaji dialogues.
-
-		HAPPY => Happy or Excited
-		SAD   => Sad
-		HUNGRY => Hungry
-		FULL => Full
-		EXCITED => Excited
-		ANGRY => Angry
-		SCARED => Scared
-		BULLIED => Bullied
-		ATTACKED => Attacked
-		POWERED => Powered
-		DRUNK => Drunk
-		SICK => Sick
-		SLEEPY => Sleepy
-	*/
-	ASM graphql.String
-	/*  Condition cheat sheet
-
-	Seems to be oriented from linux permissions. five digits; last two seem to be never used.
-
-	//// Attachment Keys
-	XX 1 XX Disliked
-	XX 2 XX Any-Emotion
-	XX 3 XX Liked
-	XX 4 XX -- NOT USED --
-	XX 5 XX Disliked/Neutral
-
-	//// Daytime Keys
-	// Default (single) conditions
-	1 XXXX Early Morning AM
-	2 XXXX Morning
-	3 XXXX Afternoon
-	4 XXXX Evening
-	5 XXXX Middle of Sleep AM
-	6 XXXX -- NOT USED --
-	// Combined Conditions
-	7 XXXX Early Morning AM - Morning
-	8 XXXX Evening AM - Middle of Sleep AM
-	9 XXXX Morning - Afternoon
-
-	//// Last seen keys
-	X 1 XXX Seen 2 hrs ago
-	X 2 XXX Seen 12 hrs ago
-	X 3 XXX Seen 5 days ago
-	X 4 XXX Seen 5 days+ ago
-	*/
+	ID               graphql.String
+	UserMessage      graphql.String
+	Message          graphql.String
+	ASM              graphql.String
 	Condition        graphql.String
 	Deleted          graphql.Boolean
 	History          []graphql.String

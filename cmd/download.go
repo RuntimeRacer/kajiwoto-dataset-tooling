@@ -80,7 +80,7 @@ param target: must be a local file. Data will be saved in csv format.`,
 			return errors.New("not your dataset! Please buy it to be able to download")
 		}
 
-		datasetContent := make([]query.AITrained, 0)
+		datasetContent := make([]DatasetEntry, 0)
 
 		// Fetch Dataset into result list
 		// Continue as long as the result set size equals fetch limit, which means there must be another page
@@ -93,8 +93,15 @@ param target: must be a local file. Data will be saved in csv format.`,
 				return err
 			}
 
-			datasetContent = append(datasetContent, datasetQueryResult...)
+			// Update limit to determine if we do another fetch
 			limit = len(datasetQueryResult)
+
+			// Convert GraphQL Results into internal format
+			converter := &DatasetEntry{}
+			for _, data := range datasetQueryResult {
+				entry := converter.FromAITrained(data)
+				datasetContent = readInDatasetEntry(datasetContent, entry)
+			}
 
 			if limit >= constants.FetchLimit {
 				// Sleep 2 secs to not bombard the API
@@ -144,7 +151,26 @@ func validateTarget(target string) (string, error) {
 	return target, nil
 }
 
-func writeCSV(target string, entries []query.AITrained) error {
+// readInDatasetEntry takes a dataset entry and adds it to the store if it passes defined conditions
+func readInDatasetEntry(store []DatasetEntry, entry DatasetEntry) []DatasetEntry {
+	// Check for Duplicates
+	for i, compare := range store {
+		// Compare via Ref value; pointer safety
+		ref := &compare
+		if ref.isDuplicate(&entry) {
+			fmt.Println(fmt.Sprintf("Warning: Dataset Entries %v and %v are identical!", compare.ID, entry.ID))
+			// Mark them as duplicates for each other
+			store[i].DuplicateIDs = append(compare.DuplicateIDs, entry.ID)
+			entry.DuplicateIDs = append(entry.DuplicateIDs, compare.ID)
+		}
+	}
+
+	// Add to the list
+	store = append(store, entry)
+	return store
+}
+
+func writeCSV(target string, entries []DatasetEntry) error {
 
 	csvfile, err := os.Create(target)
 	if err != nil {
