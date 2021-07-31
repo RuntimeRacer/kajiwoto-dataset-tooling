@@ -23,7 +23,7 @@ Non-Goals:
   - [x] Milestone 1 (Achieved on 2021-07-31): Simple download and upload of datasets
   - [ ] Milestone 2: 
     - diff (point out and store differences) and sync (eliminate differences) of CSV files and datasets.
-    - Support for context information of training data.
+    - Support for handling extended dialog context information provided in training data.
   
 - Main Release (v1.0)
   - [ ] Support for additional export options (e.g. JSON, SQlite)
