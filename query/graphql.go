@@ -112,11 +112,11 @@ type AITrained struct {
 
 type AIDocument struct {
 	ID          graphql.String
-	Order       graphql.String
+	Order       graphql.Int
 	Title       graphql.String
 	Content     graphql.String
 	QueueStatus graphql.String
-	QueuedAt    graphql.String
+	QueuedAt    uint64
 	BuiltAt     uint64
 	CreatedAt   uint64
 	UpdatedAt   uint64
