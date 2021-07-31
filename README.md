@@ -57,7 +57,7 @@ Next step is to perform the login. This has to be done once after building the b
 # WIN-Users
 kajitool.exe login -u '$USERNAME' -p '$PASSWORD'
 ```
-Once logged in, you can download any dataset of your own, free ones, or the ones that you've purchased on the marketplace. Currently, only storing them in `.csv` files is supported. For further info on how the data has to be read, please check the detailed explaination in the comment of type [DatasetEntry](/blob/main/cmd/dataset.go#L65).
+Once logged in, you can download any dataset of your own, free ones, or the ones that you've purchased on the marketplace. Currently, only storing them in `.csv` files is supported. For further info on how the data has to be read, please check the detailed explaination in the comment of type [DatasetEntry](/cmd/dataset.go#L65).
 
 ### Downloading a dataset using `kajitool`
 The `download` command currently only supports downloading if an exact dataset ID is provided, and the output format will always be a `.csv` file. To retrieve the dataset ID, navigate to your Dataset via web app. The URL should be something like `https://kajiwoto.com/d/XXX`, where `XXX` is the ID of your dataset. Copy this value and provide it as the source param for the `download` command.
