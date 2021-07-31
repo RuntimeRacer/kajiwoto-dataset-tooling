@@ -191,6 +191,46 @@ func (c *kajiwotoClient) GetAITrainedList(aiTrainerGroupID, searchQuery, authTok
 	return result, nil
 }
 
+// DoTrainDataset performs login via session key if available
+func (c *kajiwotoClient) DoTrainDataset(aiTrainerGroupID, authToken string, training []AITraining) (result TrainDatasetResult, err error) {
+	// Sanity check
+	if authToken == "" {
+		return result, fmt.Errorf("invalid login credentials")
+	}
+
+	// Convert AITraining data to form data
+	questions := make([]graphql.String, 0)
+	form := make([][]graphql.String, 0)
+	for _, item := range training {
+		questions = append(questions, item.UserMessage)
+		form = append(form, []graphql.String{item.Condition, item.Message})
+	}
+
+	vars := map[string]interface{}{
+		"aiTrainerGroupId": graphql.String(aiTrainerGroupID),
+		"questions":        questions,
+		"form":             form,
+		"editorType":       graphql.String("web-list"),
+		"detailed":         graphql.Boolean(true),
+		"multi":            graphql.Boolean(false), // FIXME: Does not seem to be used for web-ui. Maybe for batch?
+	}
+
+	// Add Auth-Token header
+	headers := map[string]string{
+		"auth_token": authToken,
+	}
+	c.AddHeaders(headers)
+
+	trainingResult := kajiwotoDatasetTrainDatasetMutation{}
+	if errTrain := c.performGraphMutation(vars, &trainingResult); errTrain != nil {
+		return result, fmt.Errorf("unable to train dataset, response: %q", errTrain)
+	}
+
+	// Build generic Result object
+	result = trainingResult.TrainDataset
+	return result, nil
+}
+
 func (c *kajiwotoClient) performGraphMutation(vars map[string]interface{}, mutation interface{}) error {
 	return c.client.Mutate(context.Background(), mutation, vars)
 }

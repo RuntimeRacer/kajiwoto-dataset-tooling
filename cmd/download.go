@@ -17,31 +17,29 @@ limitations under the License.
 package cmd
 
 import (
-	"encoding/csv"
 	"errors"
 	"fmt"
 	"github.com/runtimeracer/kajitool/constants"
 	"github.com/runtimeracer/kajitool/query"
 	"github.com/spf13/cobra"
-	"os"
 	"time"
 )
 
 // downloadCmd represents the download command
 var downloadCmd = &cobra.Command{
 	Use:   "download",
-	Short: "Downloads a dataset from a specified source and stores it in a specified target file.",
-	Long: `download fetches dataset content from the specified source and saves it into the specified target. 
+	Short: "Downloads a dataset from a specified source dataset and stores it in a specified target file.",
+	Long: `download fetches dataset content from the specified source dataset and saves it into the specified target file. 
 
 param source: a full Kajiwoto dataset URL (including ID), or a Kajiwoto dataset ID.
 param target: must be a local file. Data will be saved in csv format.`,
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 
 		// Sanity checks
-		if source, err = validateSource(source); err != nil {
+		if source, err = validateDownloadSource(source); err != nil {
 			return err
 		}
-		if target, err = validateTarget(target); err != nil {
+		if target, err = validateDownloadTarget(target); err != nil {
 			return err
 		}
 
@@ -123,19 +121,9 @@ param target: must be a local file. Data will be saved in csv format.`,
 
 func init() {
 	datasetCmd.AddCommand(downloadCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// downloadCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// downloadCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-func validateSource(source string) (string, error) {
+func validateDownloadSource(source string) (string, error) {
 	if source == "" {
 		return "", errors.New("empty source")
 	}
@@ -143,52 +131,10 @@ func validateSource(source string) (string, error) {
 	return source, nil
 }
 
-func validateTarget(target string) (string, error) {
+func validateDownloadTarget(target string) (string, error) {
 	if target == "" {
 		return "", errors.New("empty target")
 	}
 
 	return target, nil
-}
-
-// readInDatasetEntry takes a dataset entry and adds it to the store if it passes defined conditions
-func readInDatasetEntry(store []DatasetEntry, entry DatasetEntry) []DatasetEntry {
-	// Check for Duplicates
-	for i, compare := range store {
-		// Compare via Ref value; pointer safety
-		ref := &compare
-		if ref.isDuplicate(&entry) {
-			fmt.Println(fmt.Sprintf("Warning: Dataset Entries %v and %v are identical!", compare.ID, entry.ID))
-			// Mark them as duplicates for each other
-			store[i].DuplicateIDs = append(compare.DuplicateIDs, entry.ID)
-			entry.DuplicateIDs = append(entry.DuplicateIDs, compare.ID)
-		}
-	}
-
-	// Add to the list
-	store = append(store, entry)
-	return store
-}
-
-func writeCSV(target string, entries []DatasetEntry) error {
-
-	csvfile, err := os.Create(target)
-	if err != nil {
-		return err
-	}
-
-	csvwriter := csv.NewWriter(csvfile)
-	for _, entry := range entries {
-		if err = csvwriter.Write(entry.ToCSV()); err != nil {
-			return err
-		}
-	}
-
-	csvwriter.Flush()
-
-	if err = csvfile.Close(); err != nil {
-		return err
-	}
-
-	return nil
 }

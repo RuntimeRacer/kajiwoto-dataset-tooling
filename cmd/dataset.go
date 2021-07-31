@@ -17,14 +17,19 @@ limitations under the License.
 package cmd
 
 import (
+	"encoding/csv"
 	"fmt"
 	"github.com/google/go-cmp/cmp"
+	"github.com/runtimeracer/go-graphql-client"
 	"github.com/runtimeracer/kajitool/constants"
 	"github.com/runtimeracer/kajitool/query"
 	"github.com/spf13/cobra"
+	"os"
 	"strconv"
 	"strings"
 )
+
+const csvSize = 10
 
 // Flags
 var source, target string
@@ -82,7 +87,7 @@ type DatasetEntry struct {
 	ASM string
 	/*  Condition cheat sheet
 
-	Seems to be oriented from linux permissions. five digits; last two seem to be never used.
+	Seems to be inspired by linux permissions. five digits; last two seem to be never used (yet).
 
 	//// Attachment Keys
 	XX 1 XX Disliked
@@ -137,7 +142,7 @@ type DatasetEntry struct {
 
 */
 func (e *DatasetEntry) ToCSV() []string {
-	result := make([]string, 10)
+	result := make([]string, csvSize)
 
 	result[0] = e.ID
 	result[1] = e.UserMessage
@@ -145,10 +150,10 @@ func (e *DatasetEntry) ToCSV() []string {
 	result[3] = e.ASM
 
 	// Condition Split
-	attachmentVars := strings.Split(e.Condition, "")
-	result[4] = attachmentVars[2]
-	result[5] = attachmentVars[0]
-	result[6] = attachmentVars[1]
+	conditionVars := strings.Split(e.Condition, "")
+	result[4] = conditionVars[2] // Attachment
+	result[5] = conditionVars[0] // Daytime
+	result[6] = conditionVars[1] // Last seen
 
 	result[7] = strconv.FormatBool(e.Deleted)
 	result[8] = strings.Join(e.History, constants.CSVListSeparator)
@@ -176,15 +181,21 @@ func (e *DatasetEntry) ToCSV() []string {
 	- 9:  DuplicateIDs
 
 */
-func (e *DatasetEntry) FromCSV(src []string) DatasetEntry {
+func (e *DatasetEntry) FromCSV(src []string) (DatasetEntry, error) {
+	// Check if valid
+	if len(src) != csvSize {
+		return DatasetEntry{}, fmt.Errorf("invalid length, must be %v", csvSize)
+	}
+
 	// Convert from Array elements
 	condition := strings.Join([]string{src[5], src[6], src[4], "00"}, "")
-	deleted, err := strconv.ParseBool(src[7])
-	if err != nil {
+	deleted, errParse := strconv.ParseBool(src[7])
+	if errParse != nil {
 		fmt.Println("WARNING: Error Parsing Bool from String!")
 	}
 
-	return DatasetEntry{
+	// Create dataset entry
+	entry := DatasetEntry{
 		ID:           src[0],
 		UserMessage:  src[1],
 		Message:      src[2],
@@ -194,6 +205,7 @@ func (e *DatasetEntry) FromCSV(src []string) DatasetEntry {
 		History:      strings.Split(src[8], constants.CSVListSeparator),
 		DuplicateIDs: strings.Split(src[9], constants.CSVListSeparator),
 	}
+	return entry, nil
 }
 
 func (e *DatasetEntry) FromAITrained(src query.AITrained) DatasetEntry {
@@ -215,6 +227,29 @@ func (e *DatasetEntry) FromAITrained(src query.AITrained) DatasetEntry {
 	}
 }
 
+func (e *DatasetEntry) ToAITraining() query.AITraining {
+	// ASM check -> empty string if not set
+	asm := ""
+	if e.ASM != "none" {
+		asm = e.ASM
+	}
+
+	// Condition Split
+	conditionVars := strings.Split(e.Condition, "")
+	daytime := conditionVars[0]
+	lastSeen := conditionVars[1]
+	attachment := conditionVars[2]
+
+	// Convert conditions to Form submit String
+	conditionSubmitString := fmt.Sprintf("%v##%v%v%v0##0##0", asm, daytime, lastSeen, attachment)
+
+	return query.AITraining{
+		UserMessage: graphql.String(e.UserMessage),
+		Message:     graphql.String(e.Message),
+		Condition:   graphql.String(conditionSubmitString),
+	}
+}
+
 func (e *DatasetEntry) isDuplicate(c *DatasetEntry) bool {
 	if e.Message == c.Message &&
 		e.UserMessage == c.UserMessage &&
@@ -224,4 +259,79 @@ func (e *DatasetEntry) isDuplicate(c *DatasetEntry) bool {
 		return true
 	}
 	return false
+}
+
+// readInDatasetEntry takes a dataset entry and adds it to the store if it passes defined conditions
+func readInDatasetEntry(store []DatasetEntry, entry DatasetEntry) []DatasetEntry {
+	// Check for Duplicates
+	for i, compare := range store {
+		// Compare via Ref value; pointer safety
+		ref := &compare
+		if ref.isDuplicate(&entry) {
+			fmt.Println(fmt.Sprintf("Warning: Dataset Entries %v and %v are identical!", compare.ID, entry.ID))
+			// Mark them as duplicates for each other
+			store[i].DuplicateIDs = append(compare.DuplicateIDs, entry.ID)
+			entry.DuplicateIDs = append(entry.DuplicateIDs, compare.ID)
+		}
+	}
+
+	// Add to the list
+	store = append(store, entry)
+	return store
+}
+
+// writeCSV
+func writeCSV(target string, entries []DatasetEntry) error {
+
+	csvfile, err := os.Create(target)
+	if err != nil {
+		return err
+	}
+
+	// write lines FIXME: It doesen't feel right that this does not handle encoding at all...
+	csvwriter := csv.NewWriter(csvfile)
+	for _, entry := range entries {
+		if err = csvwriter.Write(entry.ToCSV()); err != nil {
+			return err
+		}
+	}
+
+	csvwriter.Flush()
+
+	if err = csvfile.Close(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// readCSV
+func readCSV(source string) ([]DatasetEntry, error) {
+	f, err := os.Open(source)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if errClose := f.Close(); errClose != nil {
+			fmt.Println("Warn: Unable to close file handle")
+		}
+	}()
+
+	// Read in lines FIXME: It doesen't feel right that this does not handle encoding at all...
+	lines, err := csv.NewReader(f).ReadAll()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create new Dataset store and read in entries
+	converter := &DatasetEntry{}
+	entries := make([]DatasetEntry, 0)
+	for i, line := range lines {
+		entry, errRead := converter.FromCSV(line)
+		if errRead != nil {
+			fmt.Println(fmt.Sprintf("Warn: error parsing CSV line %v: %v", i, errRead.Error()))
+		}
+		entries = readInDatasetEntry(entries, entry)
+	}
+	return entries, nil
 }

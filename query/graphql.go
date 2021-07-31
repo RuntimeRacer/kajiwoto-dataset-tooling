@@ -121,3 +121,20 @@ type AIDocument struct {
 	CreatedAt   uint64
 	UpdatedAt   uint64
 }
+
+type TrainDatasetResult struct {
+	Calibrations []TrainCalibration
+	Count        graphql.Int
+}
+
+type TrainCalibration struct {
+	Chance      graphql.Float
+	UserMessage graphql.String
+	Message     graphql.String
+}
+
+type AITraining struct {
+	Condition   graphql.String
+	UserMessage graphql.String
+	Message     graphql.String
+}
