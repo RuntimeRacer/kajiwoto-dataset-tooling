@@ -102,6 +102,8 @@ param target: must be a local file. Data will be saved in csv format.`,
 			}
 
 			if limit >= constants.FetchLimit {
+				// Print intermediate amount of fetched entries
+				fmt.Println(fmt.Sprintf("fetched %v dataset entries...", len(datasetContent)))
 				// Sleep 2 secs to not bombard the API
 				time.Sleep(time.Second * 2)
 			}
