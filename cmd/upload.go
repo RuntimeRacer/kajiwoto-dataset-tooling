@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"github.com/runtimeracer/kajitool/query"
 	"github.com/spf13/cobra"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -85,11 +87,26 @@ param target: a full Kajiwoto dataset URL (including ID), or a Kajiwoto dataset 
 
 		// Perform Upload - FIXME: This currently can only do single / unrelated training upload
 		for _, qEntry := range qualified {
-			// Convert
-			training := qEntry.ToAITraining()
+			// Convert training information to a elements required by graphQL
+			trainings := make([]query.AITraining, 0)
+
+			if len(qEntry.History) > 0 {
+				// Find matching history dataset entry
+				bestMatch := findBestContextualMatch(qEntry, trainingData)
+
+				// Match is Training 0
+				trainings = append(trainings, bestMatch.ToAITraining(0))
+				// Actual Entry is Training 1
+				trainings = append(trainings, qEntry.ToAITraining(1))
+			} else if len(qEntry.History) > 1 {
+				return fmt.Errorf("error: Entry U: '%v' K: '%v' has too many history context items", qEntry.UserMessage, qEntry.Message)
+			} else {
+				// Default: No history
+				trainings = append(trainings, qEntry.ToAITraining(0))
+			}
 
 			trainingResult := query.TrainDatasetResult{}
-			if trainingResult, err = client.DoTrainDataset(string(datasetInfo.ID), sessionKey, []query.AITraining{training}); err != nil {
+			if trainingResult, err = client.DoTrainDataset(string(datasetInfo.ID), sessionKey, trainings); err != nil {
 				return err
 			}
 			fmt.Println(fmt.Sprintf("Training successful. New entry count: %v", trainingResult.Count))
@@ -120,4 +137,41 @@ func validateUploadTarget(target string) (string, error) {
 	}
 
 	return target, nil
+}
+
+func findBestContextualMatch(contextEntry DatasetEntry, trainingData []DatasetEntry) DatasetEntry {
+	// Calculate matching points based on Condition & ASM
+	historyContent := contextEntry.History[0]
+	matchKeys := make([]int, 0)
+	matchMap := make(map[int]DatasetEntry)
+	for _, match := range trainingData {
+		if match.UserMessage == historyContent {
+			matchPoints := 0
+
+			// ASM
+			if match.ASM == contextEntry.ASM {
+				matchPoints++
+			}
+
+			// Condition
+			conditionVars := strings.Split(contextEntry.Condition, "")
+			matchConditionVars := strings.Split(match.Condition, "")
+			for i, qCond := range conditionVars {
+				if qCond == matchConditionVars[i] {
+					matchPoints++
+				}
+			}
+
+			// Append to map
+			if _, ok := matchMap[matchPoints]; !ok {
+				matchKeys = append(matchKeys, matchPoints)
+			}
+			matchMap[matchPoints] = match
+		}
+	}
+
+	// Get best match
+	sort.Ints(matchKeys)
+	bestMatch, _ := matchMap[matchKeys[len(matchKeys)-1]]
+	return bestMatch
 }

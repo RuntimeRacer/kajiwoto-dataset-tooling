@@ -19,14 +19,16 @@ package cmd
 import (
 	"encoding/csv"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/runtimeracer/go-graphql-client"
 	"github.com/runtimeracer/kajitool/constants"
 	"github.com/runtimeracer/kajitool/query"
 	"github.com/spf13/cobra"
-	"os"
-	"strconv"
-	"strings"
+	"golang.org/x/text/encoding/charmap"
 )
 
 const csvSize = 10
@@ -42,7 +44,7 @@ var datasetCmd = &cobra.Command{
 Only works with a valid session, otherwise it will fail.
 Offers various subcommands for different kinds of dataset interaction.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
+		_ = cmd.Help()
 	},
 }
 
@@ -125,9 +127,6 @@ type DatasetEntry struct {
 /*
 	ToCSV converts a Dataset entry into a String array used for writing it to a CSV file.
 
-	Remarks:
-	- I have no idea if more than 1 Element is even supported. However, it is an array. Allowing 5 for now.
-
 	Mapping:
 	- 0:  ID
 	- 1:  UserMessage
@@ -164,9 +163,6 @@ func (e *DatasetEntry) ToCSV() []string {
 
 /*
 	FromCSV converts a String array read from a CSV file into a Dataset entry.
-
-	Remarks:
-	- I have no idea if more than 1 Element is even supported. However, it is an array. Allowing 5 for now.
 
 	Mapping:
 	- 0:  ID
@@ -227,7 +223,7 @@ func (e *DatasetEntry) FromAITrained(src query.AITrained) DatasetEntry {
 	}
 }
 
-func (e *DatasetEntry) ToAITraining() query.AITraining {
+func (e *DatasetEntry) ToAITraining(index int) query.AITraining {
 	// ASM check -> empty string if not set
 	asm := ""
 	if e.ASM != "none" {
@@ -241,7 +237,7 @@ func (e *DatasetEntry) ToAITraining() query.AITraining {
 	attachment := conditionVars[2]
 
 	// Convert conditions to Form submit String
-	conditionSubmitString := fmt.Sprintf("%v##%v%v%v0##0##0", asm, daytime, lastSeen, attachment)
+	conditionSubmitString := fmt.Sprintf("%v##%v%v%v0##%v##0", asm, daytime, lastSeen, attachment, index)
 
 	return query.AITraining{
 		UserMessage: graphql.String(e.UserMessage),
@@ -288,8 +284,8 @@ func writeCSV(target string, entries []DatasetEntry) error {
 		return err
 	}
 
-	// write lines FIXME: It doesen't feel right that this does not handle encoding at all...
-	csvwriter := csv.NewWriter(csvfile)
+	// write lines - Storing as UTF-8
+	csvwriter := csv.NewWriter(charmap.ISO8859_15.NewEncoder().Writer(csvfile))
 	for _, entry := range entries {
 		if err = csvwriter.Write(entry.ToCSV()); err != nil {
 			return err
@@ -317,8 +313,8 @@ func readCSV(source string) ([]DatasetEntry, error) {
 		}
 	}()
 
-	// Read in lines FIXME: It doesen't feel right that this does not handle encoding at all...
-	lines, err := csv.NewReader(f).ReadAll()
+	// Read in lines - Expecting Input to be UTF-8
+	lines, err := csv.NewReader(charmap.ISO8859_15.NewDecoder().Reader(f)).ReadAll()
 	if err != nil {
 		return nil, err
 	}
