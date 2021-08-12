@@ -22,8 +22,9 @@ Non-Goals:
 - Minimum viable product (MVP)
   - [x] Milestone 1 (Achieved on 2021-07-31): Simple download and upload of datasets
   - [ ] Milestone 2: 
-    - diff (point out and store differences) and sync (eliminate differences) of CSV files and datasets.
-    - Support for handling extended dialog context information provided in training data.
+    - [ ] diff (point out and store differences) of CSV files and datasets.
+    - [ ] sync (eliminate differences) of CSV files and datasets.
+    - [ ] Support for handling extended dialog context information provided in training data.
   
 - Main Release (v1.0)
   - [ ] Support for additional export options (e.g. JSON, SQlite)
@@ -83,7 +84,7 @@ When uploading, `kajitool` will analyze the provided source data and will only a
 
 Right now, despite I believe the API supports batch uploading of training data (as the `multi` param of the graphQL Mutation indicates), `upload` issues the training requests one by one. To not hammer Kajiwoto's API too much, there is a small pause between those requests.
 
-Also, the upload functionality currently is somewhat limited. Despite the source data may contain chat history context information, it is currently not supported to add the context for trainings when uploading. The reason for this is simply, that there might be multiple follow-up dialog options for an initial starter dialog (Example: You let your Kaji Waifu know that you want to eat something; she asks you what you want to eat; and next dialog responses then depend on your answer and kaji mood etc.)
+Also, the upload functionality currently is somewhat limited. Despite the source data may contain chat history context information, it is currently not supported to add the context for trainings when uploading. The reason for this is simply, that there might be multiple follow-up dialog options for an initial starter dialog (Example: You let your Kaji Waifu know that you want to eat something; she asks you what you want to eat; and next dialog responses then depend on your answer and kaji mood etc.). This kind of linking needs to be done in a smart way, so kajitool is automatically able to link varying respones on identical input together properly, without creating duplicates for the identical input on the server dataset.
 
 
 ## License & Copyright notice
