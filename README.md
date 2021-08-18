@@ -2,6 +2,8 @@
 ![kajitool logo](doc/gopher-kajiwoto.png)
 
 ## News
+#### 2021-08-19
+Added basic functionality for handling Dialog context. Not perfect because under some circumstances it will create duplicates, but if handled properly. See section [Upload](#uploading-training-data-to-a-dataset-using-kajitool) for more details.
 #### 2021-07-31
 MVP Milestone 1 reached! It is now possible to use `kajitool` for simple uploading and downloading of dataset content via CSV files.
 
@@ -22,8 +24,9 @@ Non-Goals:
 - Minimum viable product (MVP)
   - [x] Milestone 1 (Achieved on 2021-07-31): Simple download and upload of datasets
   - [ ] Milestone 2: 
-    - diff (point out and store differences) and sync (eliminate differences) of CSV files and datasets.
-    - Support for handling extended dialog context information provided in training data.
+    - [ ] diff (point out and store differences) of CSV files and datasets.
+    - [ ] sync (eliminate differences) of CSV files and datasets.
+    - [x] Support for handling extended dialog context information provided in training data.
   
 - Main Release (v1.0)
   - [ ] Support for additional export options (e.g. JSON, SQlite)
@@ -83,7 +86,9 @@ When uploading, `kajitool` will analyze the provided source data and will only a
 
 Right now, despite I believe the API supports batch uploading of training data (as the `multi` param of the graphQL Mutation indicates), `upload` issues the training requests one by one. To not hammer Kajiwoto's API too much, there is a small pause between those requests.
 
-Also, the upload functionality currently is somewhat limited. Despite the source data may contain chat history context information, it is currently not supported to add the context for trainings when uploading. The reason for this is simply, that there might be multiple follow-up dialog options for an initial starter dialog (Example: You let your Kaji Waifu know that you want to eat something; she asks you what you want to eat; and next dialog responses then depend on your answer and kaji mood etc.)
+Also, the upload functionality currently is somewhat limited. By now it is possible to maintain the context for trainings when uploading. However, despite kajitool is able to match response context to already existing dataset entries in the CSV, it seems to be not possible right now to link new responses to existing dialog data on the API level. The linking only works on the API level if the contexts are uploaded together, which ***may*** result in identical initial dialogs. 
+
+I assume, that under the hood the linking really happens ID-based despite the public part of the API just containing the text for the linking history context. As long as it is like that, there is no way to do linking on upload in a more clean fashion. 
 
 
 ## License & Copyright notice

@@ -19,14 +19,17 @@ package cmd
 import (
 	"encoding/csv"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
+
 	"github.com/google/go-cmp/cmp"
+	"github.com/paulrosania/go-charset/charset"
+	_ "github.com/paulrosania/go-charset/data"
 	"github.com/runtimeracer/go-graphql-client"
 	"github.com/runtimeracer/kajitool/constants"
 	"github.com/runtimeracer/kajitool/query"
 	"github.com/spf13/cobra"
-	"os"
-	"strconv"
-	"strings"
 )
 
 const csvSize = 10
@@ -42,7 +45,7 @@ var datasetCmd = &cobra.Command{
 Only works with a valid session, otherwise it will fail.
 Offers various subcommands for different kinds of dataset interaction.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
+		_ = cmd.Help()
 	},
 }
 
@@ -125,9 +128,6 @@ type DatasetEntry struct {
 /*
 	ToCSV converts a Dataset entry into a String array used for writing it to a CSV file.
 
-	Remarks:
-	- I have no idea if more than 1 Element is even supported. However, it is an array. Allowing 5 for now.
-
 	Mapping:
 	- 0:  ID
 	- 1:  UserMessage
@@ -165,9 +165,6 @@ func (e *DatasetEntry) ToCSV() []string {
 /*
 	FromCSV converts a String array read from a CSV file into a Dataset entry.
 
-	Remarks:
-	- I have no idea if more than 1 Element is even supported. However, it is an array. Allowing 5 for now.
-
 	Mapping:
 	- 0:  ID
 	- 1:  UserMessage
@@ -194,6 +191,15 @@ func (e *DatasetEntry) FromCSV(src []string) (DatasetEntry, error) {
 		fmt.Println("WARNING: Error Parsing Bool from String!")
 	}
 
+	var history, duplicateIDs []string
+
+	if len(src[8]) > 0 {
+		history = strings.Split(src[8], constants.CSVListSeparator)
+	}
+	if len(src[9]) > 0 {
+		duplicateIDs = strings.Split(src[9], constants.CSVListSeparator)
+	}
+
 	// Create dataset entry
 	entry := DatasetEntry{
 		ID:           src[0],
@@ -202,8 +208,8 @@ func (e *DatasetEntry) FromCSV(src []string) (DatasetEntry, error) {
 		ASM:          src[3],
 		Condition:    condition,
 		Deleted:      deleted,
-		History:      strings.Split(src[8], constants.CSVListSeparator),
-		DuplicateIDs: strings.Split(src[9], constants.CSVListSeparator),
+		History:      history,
+		DuplicateIDs: duplicateIDs,
 	}
 	return entry, nil
 }
@@ -227,7 +233,7 @@ func (e *DatasetEntry) FromAITrained(src query.AITrained) DatasetEntry {
 	}
 }
 
-func (e *DatasetEntry) ToAITraining() query.AITraining {
+func (e *DatasetEntry) ToAITraining(index int) query.AITraining {
 	// ASM check -> empty string if not set
 	asm := ""
 	if e.ASM != "none" {
@@ -241,7 +247,7 @@ func (e *DatasetEntry) ToAITraining() query.AITraining {
 	attachment := conditionVars[2]
 
 	// Convert conditions to Form submit String
-	conditionSubmitString := fmt.Sprintf("%v##%v%v%v0##0##0", asm, daytime, lastSeen, attachment)
+	conditionSubmitString := fmt.Sprintf("%v##%v%v%v0##%v##0", asm, daytime, lastSeen, attachment, index)
 
 	return query.AITraining{
 		UserMessage: graphql.String(e.UserMessage),
@@ -288,8 +294,12 @@ func writeCSV(target string, entries []DatasetEntry) error {
 		return err
 	}
 
-	// write lines FIXME: It doesen't feel right that this does not handle encoding at all...
-	csvwriter := csv.NewWriter(csvfile)
+	// write lines - Convert and store as UTF-8
+	inputWriter, err := charset.NewWriter("utf-8", csvfile)
+	if err != nil {
+		return err
+	}
+	csvwriter := csv.NewWriter(inputWriter)
 	for _, entry := range entries {
 		if err = csvwriter.Write(entry.ToCSV()); err != nil {
 			return err
@@ -317,8 +327,12 @@ func readCSV(source string) ([]DatasetEntry, error) {
 		}
 	}()
 
-	// Read in lines FIXME: It doesen't feel right that this does not handle encoding at all...
-	lines, err := csv.NewReader(f).ReadAll()
+	// Read in lines - Expecting Input to be UTF-8
+	inputReader, err := charset.NewReader("utf-8", f)
+	if err != nil {
+		return nil, err
+	}
+	lines, err := csv.NewReader(inputReader).ReadAll()
 	if err != nil {
 		return nil, err
 	}

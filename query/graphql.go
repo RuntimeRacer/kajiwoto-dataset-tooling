@@ -50,7 +50,12 @@ type User struct {
 type Login struct {
 	AuthToken string
 	User      User
+	Usage     Usage
 	Settings  Settings
+}
+
+type Usage struct {
+	Generator graphql.Int
 }
 
 type Announcement struct {

@@ -50,6 +50,9 @@ var loginCmd = &cobra.Command{
 			if errLogin != nil {
 				fmt.Println(fmt.Sprintf("Unable to login via auth token, trying with username / password. error: %v", errLogin))
 				loginResult, errLogin = client.DoLoginUserPW(username, password)
+			} else if loginResult.Login.AuthToken == "" {
+				fmt.Println(fmt.Sprintf("No User information returned from server. Session may be outdated. Trying with username / password."))
+				loginResult, errLogin = client.DoLoginUserPW(username, password)
 			}
 		} else {
 			fmt.Println("Performing login via Username / Password combo")
