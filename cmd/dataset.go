@@ -191,6 +191,15 @@ func (e *DatasetEntry) FromCSV(src []string) (DatasetEntry, error) {
 		fmt.Println("WARNING: Error Parsing Bool from String!")
 	}
 
+	var history, duplicateIDs []string
+
+	if len(src[8]) > 0 {
+		history = strings.Split(src[8], constants.CSVListSeparator)
+	}
+	if len(src[9]) > 0 {
+		duplicateIDs = strings.Split(src[9], constants.CSVListSeparator)
+	}
+
 	// Create dataset entry
 	entry := DatasetEntry{
 		ID:           src[0],
@@ -199,8 +208,8 @@ func (e *DatasetEntry) FromCSV(src []string) (DatasetEntry, error) {
 		ASM:          src[3],
 		Condition:    condition,
 		Deleted:      deleted,
-		History:      strings.Split(src[8], constants.CSVListSeparator),
-		DuplicateIDs: strings.Split(src[9], constants.CSVListSeparator),
+		History:      history,
+		DuplicateIDs: duplicateIDs,
 	}
 	return entry, nil
 }
