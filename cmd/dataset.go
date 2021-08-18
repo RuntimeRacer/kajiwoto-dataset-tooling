@@ -24,11 +24,12 @@ import (
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/paulrosania/go-charset/charset"
+	_ "github.com/paulrosania/go-charset/data"
 	"github.com/runtimeracer/go-graphql-client"
 	"github.com/runtimeracer/kajitool/constants"
 	"github.com/runtimeracer/kajitool/query"
 	"github.com/spf13/cobra"
-	"golang.org/x/text/encoding/charmap"
 )
 
 const csvSize = 10
@@ -284,8 +285,12 @@ func writeCSV(target string, entries []DatasetEntry) error {
 		return err
 	}
 
-	// write lines - Storing as UTF-8
-	csvwriter := csv.NewWriter(charmap.ISO8859_15.NewEncoder().Writer(csvfile))
+	// write lines - Convert and store as UTF-8
+	inputWriter, err := charset.NewWriter("utf-8", csvfile)
+	if err != nil {
+		return err
+	}
+	csvwriter := csv.NewWriter(inputWriter)
 	for _, entry := range entries {
 		if err = csvwriter.Write(entry.ToCSV()); err != nil {
 			return err
@@ -314,7 +319,11 @@ func readCSV(source string) ([]DatasetEntry, error) {
 	}()
 
 	// Read in lines - Expecting Input to be UTF-8
-	lines, err := csv.NewReader(charmap.ISO8859_15.NewDecoder().Reader(f)).ReadAll()
+	inputReader, err := charset.NewReader("utf-8", f)
+	if err != nil {
+		return nil, err
+	}
+	lines, err := csv.NewReader(inputReader).ReadAll()
 	if err != nil {
 		return nil, err
 	}
