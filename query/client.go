@@ -78,7 +78,7 @@ func (c *kajiwotoClient) DoLoginUserPW(username, password string) (result LoginR
 
 	loginResult := kajiwotoLoginUserPWMutation{}
 	if errLogin := c.performGraphMutation(vars, &loginResult); errLogin != nil {
-		return result, fmt.Errorf("unable to login, response: %q", errLogin)
+		return result, errLogin
 	}
 
 	// Build generic Result object

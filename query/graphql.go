@@ -86,7 +86,7 @@ type AITrainerGroup struct {
 	DominantColors  []graphql.String
 	Kudos           Kudos
 	NSFW            graphql.Boolean
-	Personalities   interface{}
+	Personalities   [][]graphql.String
 	PetSpeciesIds   []graphql.String
 	Price           graphql.Int
 	ProfilePhotoUri graphql.String
