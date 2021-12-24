@@ -32,7 +32,42 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const csvSize = 10
+const (
+	csvSize     = 10
+	emptyColumn = "EMPTY"
+)
+
+var (
+	attachmentMap = map[string]string{
+		"0": "attachment_none_NOT_USED",
+		"1": "attachment_disliked",
+		"2": "attachment_any",
+		"3": "attachment_liked",
+		"4": "attachment_UNKNOWN",
+		"5": "attachment_disliked_neutral",
+	}
+
+	daytimeMap = map[string]string{
+		"0": "daytime_any",
+		"1": "daytime_early_morning",
+		"2": "daytime_morning",
+		"3": "daytime_afternoon",
+		"4": "daytime_evening",
+		"5": "daytime_middle_of_sleep",
+		"6": "daytime_UNKNOWN",
+		"7": "daytime_early_morning_till_morning",
+		"8": "daytime_evening_till_middle_of_sleep",
+		"9": "daytime_morning_till_afternoon",
+	}
+
+	lastSeenMap = map[string]string{
+		"0": "seen_any",
+		"1": "seen_2_hrs_ago",
+		"2": "seen_12_hrs_ago",
+		"3": "seen_5_days_ago",
+		"4": "seen_5_plus_days_ago",
+	}
+)
 
 // Flags
 var source, target string
@@ -151,13 +186,19 @@ func (e *DatasetEntry) ToCSV() []string {
 
 	// Condition Split
 	conditionVars := strings.Split(e.Condition, "")
-	result[4] = conditionVars[2] // Attachment
-	result[5] = conditionVars[0] // Daytime
-	result[6] = conditionVars[1] // Last seen
+	result[4] = attachmentMap[conditionVars[2]] // Attachment
+	result[5] = daytimeMap[conditionVars[0]]    // Daytime
+	result[6] = lastSeenMap[conditionVars[1]]   // Last seen
 
 	result[7] = strconv.FormatBool(e.Deleted)
 	result[8] = strings.Join(e.History, constants.CSVListSeparator)
+	if len(result[8]) == 0 {
+		result[8] = emptyColumn
+	}
 	result[9] = strings.Join(e.DuplicateIDs, constants.CSVListSeparator)
+	if len(result[9]) == 0 {
+		result[9] = emptyColumn
+	}
 
 	return result
 }
@@ -184,6 +225,39 @@ func (e *DatasetEntry) FromCSV(src []string) (DatasetEntry, error) {
 		return DatasetEntry{}, fmt.Errorf("invalid length, must be %v", csvSize)
 	}
 
+	// Replace condition values with proper keys
+	var foundAttachment, foundDaytime, foundLastSeen bool
+	for key, val := range attachmentMap {
+		if val == src[4] {
+			src[4] = key
+			foundAttachment = true
+			break
+		}
+	}
+	for key, val := range daytimeMap {
+		if val == src[5] {
+			src[5] = key
+			foundDaytime = true
+			break
+		}
+	}
+	for key, val := range lastSeenMap {
+		if val == src[6] {
+			src[6] = key
+			foundLastSeen = true
+			break
+		}
+	}
+	if !foundAttachment {
+		fmt.Println(fmt.Sprintf("WARNING: Invalid attachment key %v for dataset entry '%v'!", src[4], src[0]))
+	}
+	if !foundDaytime {
+		fmt.Println(fmt.Sprintf("WARNING: Invalid daytime key %v for dataset entry '%v'!", src[5], src[0]))
+	}
+	if !foundLastSeen {
+		fmt.Println(fmt.Sprintf("WARNING: Invalid last seen key %v for dataset entry '%v'!", src[6], src[0]))
+	}
+
 	// Convert from Array elements
 	condition := strings.Join([]string{src[5], src[6], src[4], "00"}, "")
 	deleted, errParse := strconv.ParseBool(src[7])
@@ -193,10 +267,10 @@ func (e *DatasetEntry) FromCSV(src []string) (DatasetEntry, error) {
 
 	var history, duplicateIDs []string
 
-	if len(src[8]) > 0 {
+	if len(src[8]) > 0 && src[8] != emptyColumn {
 		history = strings.Split(src[8], constants.CSVListSeparator)
 	}
-	if len(src[9]) > 0 {
+	if len(src[9]) > 0 && src[9] != emptyColumn {
 		duplicateIDs = strings.Split(src[9], constants.CSVListSeparator)
 	}
 
