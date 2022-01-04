@@ -38,6 +38,23 @@ const (
 )
 
 var (
+	asmMap = map[string]string{
+		"none":     "emotion_any",
+		"HAPPY":    "emotion_happy_or_excited",
+		"SAD":      "emotion_sad",
+		"HUNGRY":   "emotion_hungry",
+		"FULL":     "emotion_full",
+		"EXCITED":  "emotion_ecited",
+		"ANGRY":    "emotion_angry",
+		"SCARED":   "emotion_scared",
+		"BULLIED":  "emotion_bullied",
+		"ATTACKED": "emotion_attacked",
+		"POWERED":  "emotion_powered",
+		"DRUNK":    "emotion_drunk",
+		"SICK":     "emotion_sick",
+		"SLEEPY":   "emotion_sleepy",
+	}
+
 	attachmentMap = map[string]string{
 		"0": "attachment_none_NOT_USED",
 		"1": "attachment_disliked",
@@ -182,7 +199,7 @@ func (e *DatasetEntry) ToCSV() []string {
 	result[0] = e.ID
 	result[1] = e.UserMessage
 	result[2] = e.Message
-	result[3] = e.ASM
+	result[3] = asmMap[e.ASM]
 
 	// Condition Split
 	conditionVars := strings.Split(e.Condition, "")
@@ -226,7 +243,14 @@ func (e *DatasetEntry) FromCSV(src []string) (DatasetEntry, error) {
 	}
 
 	// Replace condition values with proper keys
-	var foundAttachment, foundDaytime, foundLastSeen bool
+	var foundEmotion, foundAttachment, foundDaytime, foundLastSeen bool
+	for key, val := range asmMap {
+		if val == src[3] {
+			src[3] = key
+			foundEmotion = true
+			break
+		}
+	}
 	for key, val := range attachmentMap {
 		if val == src[4] {
 			src[4] = key
@@ -247,6 +271,9 @@ func (e *DatasetEntry) FromCSV(src []string) (DatasetEntry, error) {
 			foundLastSeen = true
 			break
 		}
+	}
+	if !foundEmotion {
+		fmt.Println(fmt.Sprintf("WARNING: Invalid emotional key %v for dataset entry '%v'!", src[3], src[0]))
 	}
 	if !foundAttachment {
 		fmt.Println(fmt.Sprintf("WARNING: Invalid attachment key %v for dataset entry '%v'!", src[4], src[0]))

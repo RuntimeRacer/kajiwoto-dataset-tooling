@@ -21,7 +21,10 @@ import (
 	"fmt"
 	"github.com/runtimeracer/kajitool/constants"
 	"github.com/runtimeracer/kajitool/query"
+	"github.com/runtimeracer/kajitool/util"
 	"github.com/spf13/cobra"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -112,6 +115,9 @@ param target: must be a local file. Data will be saved in csv format.`,
 		// Inform user on amount of fetch
 		fmt.Println(fmt.Sprintf("Done. Fetched %v dataset entries.", len(datasetContent)))
 
+		// Organize Dataset entries to place related ones next to each other
+		datasetContent = orderDatasetEntries(datasetContent)
+
 		// Write to target file
 		if err = writeCSV(target, datasetContent); err != nil {
 			return err
@@ -119,6 +125,97 @@ param target: must be a local file. Data will be saved in csv format.`,
 
 		return nil
 	},
+}
+
+// orderDatasetEntries orders entries by user messages and condition set.
+// This allows to easier maintain an overview of the dataset content.
+func orderDatasetEntries(store []DatasetEntry) []DatasetEntry {
+	// 1. Group all entries by user message
+	entryGroupMap := make(map[string][]DatasetEntry)
+	for _, entry := range store {
+		userMessage := entry.UserMessage
+		// Check for existing entry and create if if not existing
+		if entries, okEntries := entryGroupMap[userMessage]; !okEntries {
+			entries = []DatasetEntry{entry}
+			entryGroupMap[userMessage] = entries
+		} else {
+			entryGroupMap[userMessage] = append(entries, entry)
+		}
+	}
+
+	// Get sorted slices of condition keys
+	emotionKeyIdx := util.GetMapKeyIndicesStringString(asmMap)
+	attachmentKeyIdx := util.GetMapKeyIndicesStringString(attachmentMap)
+	daytimeKeyIdx := util.GetMapKeyIndicesStringString(daytimeMap)
+	lastSeenKeyIdx := util.GetMapKeyIndicesStringString(lastSeenMap)
+
+	// 2. Iterate through each group and order them based on message conditions defined, and whether they're follow-ups
+	orderedEntries := make([]DatasetEntry, 0)
+	for _, entries := range entryGroupMap {
+		entryRankingMap := make(map[int][]DatasetEntry)
+		for _, entry := range entries {
+			conditionVars := strings.Split(entry.Condition, "")
+			ranking := 0x00000 // Use bitwise to avoid 4k+ iterations for each entry
+
+			// Emotion
+			for i, key := range emotionKeyIdx {
+				if entry.ASM == key {
+					ranking += 0x10000 * i
+					break
+				}
+			}
+			// Attachment
+			for i, key := range attachmentKeyIdx {
+				if conditionVars[2] == key {
+					ranking += 0x01000 * i
+					break
+				}
+			}
+			// Daytime
+			for i, key := range daytimeKeyIdx {
+				if conditionVars[0] == key {
+					ranking += 0x00100 * i
+					break
+				}
+			}
+			// LastSeen
+			for i, key := range lastSeenKeyIdx {
+				if conditionVars[1] == key {
+					ranking += 0x00010 * i
+					break
+				}
+			}
+			// History
+			if len(entry.History) > 0 {
+				ranking += 0x00001
+			}
+
+			// Add to ranking map
+			if rankedEntries, okRankedEntries := entryRankingMap[ranking]; !okRankedEntries {
+				rankedEntries = []DatasetEntry{entry}
+				entryRankingMap[ranking] = rankedEntries
+			} else {
+				entryRankingMap[ranking] = append(rankedEntries)
+			}
+		}
+
+		// Build ranking Idx
+		rankingIdx := make([]int, len(entryRankingMap))
+		i := 0
+		for key, _ := range entryRankingMap {
+			rankingIdx[i] = key
+			i++
+		}
+		sort.Ints(rankingIdx)
+
+		// Add to ordered list in ranking order
+		for _, currentRank := range rankingIdx {
+			currentRankEntries, _ := entryRankingMap[currentRank]
+			orderedEntries = append(orderedEntries, currentRankEntries...)
+		}
+	}
+
+	return orderedEntries
 }
 
 func init() {
